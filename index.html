@@ -341,7 +341,10 @@
   <div id="categories"></div>
 
   <footer>
-    <button class="reset-btn" onclick="resetAll()">↺ Reset Day</button>
+    <div style="display:flex;gap:8px">
+      <button class="reset-btn" onclick="resetAll()">↺ Reset Day</button>
+      <button class="reset-btn" onclick="clearAll()" style="font-size:9px">✕ Clear All</button>
+    </div>
     <span class="summary-text" id="footerSummary"></span>
   </footer>
 </div>
@@ -354,19 +357,33 @@ const CATEGORIES = [
   { id: 'data',     label: 'Data & Analysis',     defaultTasks: ['Record raw data / notes', 'Back up data files', 'Update lab notebook'] },
 ];
 
+const STORAGE_KEY = 'labChecklist_v1';
+
 // State: { catId: [{id, label, done}] }
 let state = {};
 
 function loadState() {
-  // Build initial state from defaults
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge saved state — keep saved tasks, fall back to defaults for missing categories
+      CATEGORIES.forEach(cat => {
+        state[cat.id] = parsed[cat.id] || cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
+      });
+      return;
+    }
+  } catch(e) {}
+  // No saved state — use defaults
   CATEGORIES.forEach(cat => {
     state[cat.id] = cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
   });
 }
 
 function saveState() {
-  // In LabArchives HTML widgets, localStorage may not persist — state lives in memory per session.
-  // This function is a hook for future persistence.
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {}
 }
 
 function getDate() {
@@ -483,9 +500,18 @@ function handleAddKey(event, catId) {
 }
 
 function resetAll() {
-  if (!confirm('Reset all checkboxes for today?')) return;
+  if (!confirm('Reset all checkboxes for today? Your custom tasks will be kept.')) return;
   CATEGORIES.forEach(cat => state[cat.id].forEach(t => t.done = false));
   saveState(); render();
+}
+
+function clearAll() {
+  if (!confirm('Reset everything to defaults? This will remove all custom tasks.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  CATEGORIES.forEach(cat => {
+    state[cat.id] = cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
+  });
+  render();
 }
 
 function escapeHtml(str) {
