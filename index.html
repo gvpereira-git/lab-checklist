@@ -357,7 +357,9 @@ const CATEGORIES = [
   { id: 'data',     label: 'Data & Analysis',     defaultTasks: ['Record raw data / notes', 'Back up data files', 'Update lab notebook'] },
 ];
 
-const STORAGE_KEY = 'labChecklist_v1';
+const todayDate = new Date().toISOString().slice(0, 10); // e.g. "2026-03-11"
+const PAGE_ID = new URLSearchParams(window.location.search).get('page') || todayDate;
+const STORAGE_KEY = 'labChecklist_' + PAGE_ID;
 
 // State: { catId: [{id, label, done}] }
 let state = {};
@@ -374,9 +376,9 @@ function loadState() {
       return;
     }
   } catch(e) {}
-  // No saved state — use defaults
+  // No saved state — all pages start blank (tasks are user-defined per day)
   CATEGORIES.forEach(cat => {
-    state[cat.id] = cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
+    state[cat.id] = [];
   });
 }
 
@@ -508,9 +510,7 @@ function resetAll() {
 function clearAll() {
   if (!confirm('Reset everything to defaults? This will remove all custom tasks.')) return;
   localStorage.removeItem(STORAGE_KEY);
-  CATEGORIES.forEach(cat => {
-    state[cat.id] = cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
-  });
+  CATEGORIES.forEach(cat => { state[cat.id] = []; });
   render();
 }
 
