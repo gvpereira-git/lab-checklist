@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Lab Checklist</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1eb;
+    --surface: #ffffff;
+    --border: #d6cfc2;
+    --text: #1a1612;
+    --muted: #8a8278;
+    --accent-prep: #c8571a;
+    --accent-protocol: #1a6e3e;
+    --accent-safety: #1a4a8e;
+    --accent-data: #7a1a8e;
+    --done-bg: #e8e4dd;
+    --done-text: #a09890;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 20px;
+  }
+
+  .widget {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    border-bottom: 2px solid var(--text);
+    padding-bottom: 10px;
+  }
+
+  header h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .date-stamp {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  .progress-bar-wrap {
+    height: 3px;
+    background: var(--border);
+    margin-bottom: 20px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: -16px;
+    margin-bottom: 18px;
+    letter-spacing: 0.04em;
+  }
+
+  /* CATEGORIES */
+  .category {
+    margin-bottom: 20px;
+  }
+
+  .cat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .cat-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .cat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cat-add-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 7px;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .cat-add-btn:hover {
+    border-color: var(--text);
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px 8px 12px;
+    transition: all 0.2s;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .task-item.done {
+    background: var(--done-bg);
+    border-color: transparent;
+  }
+
+  .task-item.done .task-label {
+    text-decoration: line-through;
+    color: var(--done-text);
+  }
+
+  .task-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .task-check:checked {
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .task-check:checked::after {
+    content: '';
+    position: absolute;
+    left: 3px; top: 1px;
+    width: 5px; height: 8px;
+    border: 2px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(40deg);
+  }
+
+  .task-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text);
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1.3;
+  }
+
+  .task-del {
+    background: none;
+    border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+    font-family: var(--mono);
+  }
+  .task-del:hover { color: #c0392b; }
+
+  /* ADD TASK INLINE INPUT */
+  .add-task-row {
+    display: none;
+    gap: 6px;
+    margin-top: 4px;
+    animation: slideIn 0.15s ease;
+  }
+  .add-task-row.visible { display: flex; }
+
+  .add-task-input {
+    flex: 1;
+    border: 1px solid var(--text);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-family: var(--sans);
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .add-task-input::placeholder { color: var(--muted); }
+
+  .add-confirm-btn {
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .add-confirm-btn:hover { opacity: 0.8; }
+
+  .add-cancel-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .add-cancel-btn:hover { border-color: var(--text); color: var(--text); }
+
+  /* FOOTER */
+  footer {
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 5px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .reset-btn:hover { border-color: #c0392b; color: #c0392b; }
+
+  .summary-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  /* Color accents per category */
+  [data-cat="prep"] .cat-dot { background: var(--accent-prep); }
+  [data-cat="prep"] .task-check:checked { background: var(--accent-prep); border-color: var(--accent-prep); }
+  [data-cat="prep"] .task-item:not(.done) { border-left: 3px solid var(--accent-prep); }
+
+  [data-cat="protocol"] .cat-dot { background: var(--accent-protocol); }
+  [data-cat="protocol"] .task-check:checked { background: var(--accent-protocol); border-color: var(--accent-protocol); }
+  [data-cat="protocol"] .task-item:not(.done) { border-left: 3px solid var(--accent-protocol); }
+
+  [data-cat="safety"] .cat-dot { background: var(--accent-safety); }
+  [data-cat="safety"] .task-check:checked { background: var(--accent-safety); border-color: var(--accent-safety); }
+  [data-cat="safety"] .task-item:not(.done) { border-left: 3px solid var(--accent-safety); }
+
+  [data-cat="data"] .cat-dot { background: var(--accent-data); }
+  [data-cat="data"] .task-check:checked { background: var(--accent-data); border-color: var(--accent-data); }
+  [data-cat="data"] .task-item:not(.done) { border-left: 3px solid var(--accent-data); }
+
+  .empty-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--border);
+    letter-spacing: 0.06em;
+    padding: 6px 0;
+  }
+</style>
+</head>
+<body>
+<div class="widget">
+  <header>
+    <h1>Daily Lab Checklist</h1>
+    <span class="date-stamp" id="datestamp"></span>
+  </header>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">0 / 0 tasks complete</div>
+
+  <div id="categories"></div>
+
+  <footer>
+    <button class="reset-btn" onclick="resetAll()">↺ Reset Day</button>
+    <span class="summary-text" id="footerSummary"></span>
+  </footer>
+</div>
+
+<script>
+const CATEGORIES = [
+  { id: 'prep',     label: 'Lab Prep',            defaultTasks: ['Prepare media / buffers', 'Check reagent stock', 'Autoclave equipment'] },
+  { id: 'protocol', label: 'Experimental Steps',  defaultTasks: ['Review protocol for the day', 'Set up bench / materials', 'Run experiment'] },
+  { id: 'safety',   label: 'Safety Checks',       defaultTasks: ['PPE inspection', 'Check biosafety cabinet', 'Waste disposal log'] },
+  { id: 'data',     label: 'Data & Analysis',     defaultTasks: ['Record raw data / notes', 'Back up data files', 'Update lab notebook'] },
+];
+
+// State: { catId: [{id, label, done}] }
+let state = {};
+
+function loadState() {
+  // Build initial state from defaults
+  CATEGORIES.forEach(cat => {
+    state[cat.id] = cat.defaultTasks.map((t, i) => ({ id: cat.id + '_' + i, label: t, done: false }));
+  });
+}
+
+function saveState() {
+  // In LabArchives HTML widgets, localStorage may not persist — state lives in memory per session.
+  // This function is a hook for future persistence.
+}
+
+function getDate() {
+  return new Date().toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' }).toUpperCase();
+}
+
+function render() {
+  document.getElementById('datestamp').textContent = getDate();
+  const container = document.getElementById('categories');
+  container.innerHTML = '';
+
+  let totalDone = 0, totalAll = 0;
+
+  CATEGORIES.forEach(cat => {
+    const tasks = state[cat.id];
+    totalAll += tasks.length;
+    totalDone += tasks.filter(t => t.done).length;
+
+    const section = document.createElement('div');
+    section.className = 'category';
+    section.setAttribute('data-cat', cat.id);
+
+    const header = document.createElement('div');
+    header.className = 'cat-header';
+    header.innerHTML = `
+      <span class="cat-title">
+        <span class="cat-dot"></span>${cat.label}
+      </span>
+      <button class="cat-add-btn" onclick="showAddInput('${cat.id}')">+ Add task</button>
+    `;
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'task-list';
+    list.id = 'list_' + cat.id;
+
+    if (tasks.length === 0) {
+      list.innerHTML = '<span class="empty-hint">No tasks — add one above.</span>';
+    } else {
+      tasks.forEach(task => {
+        const item = document.createElement('div');
+        item.className = 'task-item' + (task.done ? ' done' : '');
+        item.id = 'item_' + task.id;
+        item.innerHTML = `
+          <input type="checkbox" class="task-check" ${task.done ? 'checked' : ''}
+            onchange="toggleTask('${cat.id}', '${task.id}')">
+          <span class="task-label" onclick="toggleTask('${cat.id}', '${task.id}')">${escapeHtml(task.label)}</span>
+          <button class="task-del" onclick="deleteTask('${cat.id}', '${task.id}')" title="Remove">×</button>
+        `;
+        list.appendChild(item);
+      });
+    }
+    section.appendChild(list);
+
+    // Add-task inline row
+    const addRow = document.createElement('div');
+    addRow.className = 'add-task-row';
+    addRow.id = 'addrow_' + cat.id;
+    addRow.innerHTML = `
+      <input class="add-task-input" id="addinput_${cat.id}" type="text" placeholder="New task description…"
+        onkeydown="handleAddKey(event, '${cat.id}')">
+      <button class="add-confirm-btn" onclick="confirmAdd('${cat.id}')">Add</button>
+      <button class="add-cancel-btn" onclick="hideAddInput('${cat.id}')">Cancel</button>
+    `;
+    section.appendChild(addRow);
+
+    container.appendChild(section);
+  });
+
+  // Update progress
+  const pct = totalAll === 0 ? 0 : Math.round((totalDone / totalAll) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${totalDone} / ${totalAll} tasks complete`;
+  document.getElementById('footerSummary').textContent = pct === 100 && totalAll > 0
+    ? '✓ All done for today!'
+    : `${pct}% complete`;
+}
+
+function toggleTask(catId, taskId) {
+  const task = state[catId].find(t => t.id === taskId);
+  if (task) { task.done = !task.done; saveState(); render(); }
+}
+
+function deleteTask(catId, taskId) {
+  state[catId] = state[catId].filter(t => t.id !== taskId);
+  saveState(); render();
+}
+
+function showAddInput(catId) {
+  const row = document.getElementById('addrow_' + catId);
+  row.classList.add('visible');
+  setTimeout(() => document.getElementById('addinput_' + catId).focus(), 50);
+}
+
+function hideAddInput(catId) {
+  const row = document.getElementById('addrow_' + catId);
+  row.classList.remove('visible');
+  document.getElementById('addinput_' + catId).value = '';
+}
+
+function confirmAdd(catId) {
+  const input = document.getElementById('addinput_' + catId);
+  const label = input.value.trim();
+  if (!label) return;
+  const id = catId + '_' + Date.now();
+  state[catId].push({ id, label, done: false });
+  hideAddInput(catId);
+  saveState(); render();
+}
+
+function handleAddKey(event, catId) {
+  if (event.key === 'Enter') confirmAdd(catId);
+  if (event.key === 'Escape') hideAddInput(catId);
+}
+
+function resetAll() {
+  if (!confirm('Reset all checkboxes for today?')) return;
+  CATEGORIES.forEach(cat => state[cat.id].forEach(t => t.done = false));
+  saveState(); render();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadState();
+render();
+</script>
+</body>
+</html>
