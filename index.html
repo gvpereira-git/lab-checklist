@@ -53,11 +53,7 @@
     flex-shrink: 0;
   }
 
-  .date-nav {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .date-nav { display: flex; align-items: center; gap: 6px; }
 
   .nav-btn {
     background: none;
@@ -70,7 +66,6 @@
     width: 24px; height: 24px;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
-    line-height: 1;
   }
   .nav-btn:hover { border-color: var(--text); color: var(--text); }
 
@@ -154,11 +149,7 @@
     gap: 7px;
   }
 
-  .cat-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
   .cat-add-btn {
     background: none;
@@ -173,7 +164,6 @@
     letter-spacing: 0.05em;
   }
   .cat-add-btn:hover { border-color: var(--text); color: var(--text); background: var(--surface); }
-  .cat-add-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
   .task-list { display: flex; flex-direction: column; gap: 4px; }
 
@@ -222,7 +212,6 @@
   .task-label {
     flex: 1;
     font-size: 13px;
-    font-weight: 400;
     color: var(--text);
     cursor: pointer;
     transition: color 0.2s;
@@ -242,12 +231,7 @@
   }
   .task-del:hover { color: #c0392b; }
 
-  .add-task-row {
-    display: none;
-    gap: 6px;
-    margin-top: 4px;
-    animation: slideIn 0.15s ease;
-  }
+  .add-task-row { display: none; gap: 6px; margin-top: 4px; animation: slideIn 0.15s ease; }
   .add-task-row.visible { display: flex; }
 
   .add-task-input {
@@ -297,6 +281,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .reset-btn {
@@ -313,6 +299,21 @@
     transition: all 0.15s;
   }
   .reset-btn:hover { border-color: #c0392b; color: #c0392b; }
+
+  .copy-btn {
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  .copy-btn:hover { opacity: 0.75; }
 
   .summary-text {
     font-family: var(--mono);
@@ -344,6 +345,30 @@
     letter-spacing: 0.06em;
     padding: 6px 0;
   }
+
+  @keyframes fadeToast {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  #copyToast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 8px 20px;
+    border-radius: 4px;
+    pointer-events: none;
+    animation: fadeToast 2.2s ease forwards;
+  }
 </style>
 </head>
 <body>
@@ -374,25 +399,30 @@
       <button class="reset-btn" onclick="resetAll()">&#8635; Reset Day</button>
       <button class="reset-btn" onclick="clearAll()" style="font-size:9px">&#10005; Clear All</button>
     </div>
-    <span class="summary-text" id="footerSummary"></span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="summary-text" id="footerSummary"></span>
+      <button class="copy-btn" onclick="copyAsText()" title="Copy to paste into LabArchives rich text">
+        &#128203; Copy for Notebook
+      </button>
+    </div>
   </footer>
 </div>
 
+<div id="copyToast">Copied to clipboard!</div>
+
 <script>
 const CATEGORIES = [
-  { id: 'prep',     label: 'Lab Prep',           defaultTasks: [] },
-  { id: 'protocol', label: 'Experimental Steps', defaultTasks: [] },
-  { id: 'safety',   label: 'Safety Checks',      defaultTasks: [] },
-  { id: 'data',     label: 'Data & Analysis',    defaultTasks: [] },
+  { id: 'prep',     label: 'Lab Prep' },
+  { id: 'protocol', label: 'Experimental Steps' },
+  { id: 'safety',   label: 'Safety Checks' },
+  { id: 'data',     label: 'Data & Analysis' },
 ];
 
 const todayDate = new Date().toISOString().slice(0, 10);
 let currentDate = new URLSearchParams(window.location.search).get('page') || todayDate;
 let state = {};
 
-function storageKey(date) {
-  return 'labChecklist_' + date;
-}
+function storageKey(date) { return 'labChecklist_' + date; }
 
 function loadState(date) {
   state = {};
@@ -400,9 +430,7 @@ function loadState(date) {
     const saved = localStorage.getItem(storageKey(date));
     if (saved) {
       const parsed = JSON.parse(saved);
-      CATEGORIES.forEach(cat => {
-        state[cat.id] = parsed[cat.id] || [];
-      });
+      CATEGORIES.forEach(cat => { state[cat.id] = parsed[cat.id] || []; });
       return;
     }
   } catch(e) {}
@@ -410,9 +438,7 @@ function loadState(date) {
 }
 
 function saveState() {
-  try {
-    localStorage.setItem(storageKey(currentDate), JSON.stringify(state));
-  } catch(e) {}
+  try { localStorage.setItem(storageKey(currentDate), JSON.stringify(state)); } catch(e) {}
 }
 
 function isToday() { return currentDate === todayDate; }
@@ -433,7 +459,6 @@ function shiftDate(delta) {
 }
 
 function render() {
-  // Update date picker & badge
   document.getElementById('datePicker').value = currentDate;
   document.getElementById('todayBadge').style.display = isToday() ? 'inline' : 'none';
   document.getElementById('pastNotice').style.display = isToday() ? 'none' : 'block';
@@ -455,9 +480,7 @@ function render() {
     const header = document.createElement('div');
     header.className = 'cat-header';
     header.innerHTML = `
-      <span class="cat-title">
-        <span class="cat-dot"></span>${cat.label}
-      </span>
+      <span class="cat-title"><span class="cat-dot"></span>${cat.label}</span>
       <button class="cat-add-btn" onclick="showAddInput('${cat.id}')">+ Add task</button>
     `;
     section.appendChild(header);
@@ -472,7 +495,6 @@ function render() {
       tasks.forEach(task => {
         const item = document.createElement('div');
         item.className = 'task-item' + (task.done ? ' done' : '');
-        item.id = 'item_' + task.id;
         item.innerHTML = `
           <input type="checkbox" class="task-check" ${task.done ? 'checked' : ''}
             onchange="toggleTask('${cat.id}', '${task.id}')">
@@ -500,8 +522,8 @@ function render() {
   const pct = totalAll === 0 ? 0 : Math.round((totalDone / totalAll) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressLabel').textContent = `${totalDone} / ${totalAll} tasks complete`;
-  document.getElementById('footerSummary').textContent = pct === 100 && totalAll > 0
-    ? '&#10003; All done for today!' : `${pct}% complete`;
+  document.getElementById('footerSummary').textContent =
+    pct === 100 && totalAll > 0 ? 'All done!' : `${pct}% complete`;
 }
 
 function toggleTask(catId, taskId) {
@@ -515,14 +537,12 @@ function deleteTask(catId, taskId) {
 }
 
 function showAddInput(catId) {
-  const row = document.getElementById('addrow_' + catId);
-  row.classList.add('visible');
+  document.getElementById('addrow_' + catId).classList.add('visible');
   setTimeout(() => document.getElementById('addinput_' + catId).focus(), 50);
 }
 
 function hideAddInput(catId) {
-  const row = document.getElementById('addrow_' + catId);
-  row.classList.remove('visible');
+  document.getElementById('addrow_' + catId).classList.remove('visible');
   document.getElementById('addinput_' + catId).value = '';
 }
 
@@ -530,8 +550,7 @@ function confirmAdd(catId) {
   const input = document.getElementById('addinput_' + catId);
   const label = input.value.trim();
   if (!label) return;
-  const id = catId + '_' + Date.now();
-  state[catId].push({ id, label, done: false });
+  state[catId].push({ id: catId + '_' + Date.now(), label, done: false });
   hideAddInput(catId);
   saveState(); render();
 }
@@ -554,11 +573,64 @@ function clearAll() {
   render();
 }
 
+function copyAsText() {
+  // Format: header + each category with its tasks
+  const dateLabel = new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  let lines = [];
+  lines.push('Lab Checklist — ' + dateLabel);
+  lines.push('');
+
+  let hasAnyTask = false;
+  CATEGORIES.forEach(cat => {
+    const tasks = state[cat.id];
+    if (tasks.length === 0) return;
+    hasAnyTask = true;
+    lines.push('[' + cat.label.toUpperCase() + ']');
+    tasks.forEach(task => {
+      lines.push((task.done ? '\u2713 ' : '\u2610 ') + task.label);
+    });
+    lines.push('');
+  });
+
+  if (!hasAnyTask) {
+    lines.push('(No tasks recorded for this day)');
+  }
+
+  const text = lines.join('\n').trimEnd();
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast();
+  }).catch(() => {
+    // Fallback for older browsers / iframe restrictions
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast();
+  });
+}
+
+function showToast() {
+  const toast = document.getElementById('copyToast');
+  toast.style.display = 'block';
+  // Re-trigger animation
+  toast.style.animation = 'none';
+  toast.offsetHeight; // reflow
+  toast.style.animation = 'fadeToast 2.2s ease forwards';
+  setTimeout(() => { toast.style.display = 'none'; }, 2300);
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Init
 loadState(currentDate);
 render();
 </script>
