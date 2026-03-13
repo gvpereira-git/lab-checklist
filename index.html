@@ -258,6 +258,17 @@
     flex-shrink: 0;
   }
   .task-comment-btn:hover { color: #888; }
+
+  .comment-indicator {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-left: -4px;
+    display: none;
+  }
+  .comment-indicator.visible {
+    display: inline;
+  }
   .task-comment-btn.has-comment { color: var(--accent-protocol); }
 
   .task-comment-box {
@@ -634,34 +645,76 @@ function render() {
       list.innerHTML = '<span class="empty-hint">No tasks — add one above.</span>';
     } else {
       tasks.forEach(task => {
+        // --- task row ---
         const item = document.createElement('div');
         item.className = 'task-item' + (task.done ? ' done' : '') + (task.carriedOver ? ' carried' : '');
-        const hasComment = task.comment && task.comment.trim().length > 0;
-        item.innerHTML = `
-          <input type="checkbox" class="task-check" ${task.done ? 'checked' : ''}
-            onchange="toggleTask('${cat.id}', '${task.id}')">
-          <span class="task-label" onclick="toggleTask('${cat.id}', '${task.id}')">${escapeHtml(task.label)}</span>
-          ${task.carriedOver ? '<span class="carried-tag">carried</span>' : ''}
-          <button class="task-comment-btn ${hasComment ? 'has-comment' : ''}"
-            onclick="toggleComment('${cat.id}', '${task.id}')"
-            title="${hasComment ? 'View/edit comment' : 'Add comment'}">&#128172;</button>
-          <button class="task-del" onclick="deleteTask('${cat.id}', '${task.id}')" title="Remove">&#215;</button>
-        `;
 
-        // Comment box below the task row
-        const commentBox = document.createElement('div');
-        commentBox.className = 'task-comment-box';  // always hidden until toggled
-        commentBox.id = 'comment_' + task.id;
-        commentBox.innerHTML = `
-          <textarea class="task-comment-textarea"
-            id="commentta_${task.id}"
-            placeholder="Add a note for this task…"
-            onblur="saveComment('${cat.id}', '${task.id}')"
-            onkeydown="if(event.key==='Escape')toggleComment('${cat.id}','${task.id}')"
-          >${escapeHtml(task.comment || '')}</textarea>
-          ${hasComment ? '<div class="task-comment-saved" id="commentsaved_'+task.id+'"></div>' : '<div class="task-comment-saved" id="commentsaved_'+task.id+'"></div>'}
-        `;
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.className = 'task-check';
+        chk.checked = !!task.done;
+        chk.addEventListener('change', () => toggleTask(cat.id, task.id));
+
+        const lbl = document.createElement('span');
+        lbl.className = 'task-label';
+        lbl.textContent = task.label;
+        lbl.addEventListener('click', () => toggleTask(cat.id, task.id));
+
+        const commentBtn = document.createElement('button');
+        commentBtn.className = 'task-comment-btn';
+        commentBtn.id = 'commentbtn_' + task.id;
+        commentBtn.innerHTML = '&#128172;';
+        const hasComment = !!(task.comment && task.comment.trim());
+        commentBtn.title = hasComment ? 'View/edit comment' : 'Add comment';
+        commentBtn.addEventListener('click', () => toggleComment(cat.id, task.id));
+
+        const commentIndicator = document.createElement('span');
+        commentIndicator.className = 'comment-indicator' + (hasComment ? ' visible' : '');
+        commentIndicator.id = 'commentind_' + task.id;
+        commentIndicator.textContent = '\u2713';
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'task-del';
+        delBtn.innerHTML = '&#215;';
+        delBtn.title = 'Remove';
+        delBtn.addEventListener('click', () => deleteTask(cat.id, task.id));
+
+        item.appendChild(chk);
+        item.appendChild(lbl);
+        if (task.carriedOver) {
+          const tag = document.createElement('span');
+          tag.className = 'carried-tag';
+          tag.textContent = 'carried';
+          item.appendChild(tag);
+        }
+        item.appendChild(commentBtn);
+        item.appendChild(commentIndicator);
+        item.appendChild(delBtn);
         list.appendChild(item);
+
+        // --- comment box below task row ---
+        const commentBox = document.createElement('div');
+        commentBox.className = 'task-comment-box';
+        commentBox.id = 'comment_' + task.id;
+
+        const ta = document.createElement('textarea');
+        ta.className = 'task-comment-textarea';
+        ta.id = 'commentta_' + task.id;
+        ta.placeholder = 'Add a note for this task…';
+        ta.value = task.comment || '';
+        ta.addEventListener('input', () => {
+          const t = state[cat.id].find(x => x.id === task.id);
+          if (!t) return;
+          t.comment = ta.value;
+          saveState();
+          const ind = document.getElementById('commentind_' + task.id);
+          if (ind) {
+            if (ta.value.trim()) ind.classList.add('visible');
+            else ind.classList.remove('visible');
+          }
+        });
+
+        commentBox.appendChild(ta);
         list.appendChild(commentBox);
       });
     }
@@ -805,16 +858,15 @@ function saveComment(catId, taskId) {
   if (!task) return;
   task.comment = ta.value;
   saveState();
-  // Update comment button appearance
-  const btn = ta.closest('.task-list').querySelector(`button.task-comment-btn[onclick*="${taskId}"]`);
+  const btn = document.getElementById('commentbtn_' + taskId);
   if (btn) {
-    if (task.comment.trim()) btn.classList.add('has-comment');
-    else btn.classList.remove('has-comment');
-  }
-  const saved = document.getElementById('commentsaved_' + taskId);
-  if (saved) {
-    saved.textContent = 'Saved';
-    setTimeout(() => { if(saved) saved.textContent = ''; }, 1500);
+    if (task.comment && task.comment.trim()) {
+      btn.classList.add('has-comment');
+      btn.title = 'View/edit comment';
+    } else {
+      btn.classList.remove('has-comment');
+      btn.title = 'Add comment';
+    }
   }
 }
 
