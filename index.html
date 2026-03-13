@@ -187,6 +187,21 @@
   .task-item.done { background: var(--done-bg); border-color: transparent; }
   .task-item.done .task-label { text-decoration: line-through; color: var(--done-text); }
 
+  .task-item.carried {
+    border-style: dashed;
+  }
+
+  .carried-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+
   .task-check {
     appearance: none;
     -webkit-appearance: none;
@@ -282,7 +297,7 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
   }
 
   .reset-btn {
@@ -299,6 +314,21 @@
     transition: all 0.15s;
   }
   .reset-btn:hover { border-color: #c0392b; color: #c0392b; }
+
+  .action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 5px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--text); color: var(--text); }
 
   .copy-btn {
     background: var(--text);
@@ -367,7 +397,6 @@
     padding: 8px 20px;
     border-radius: 4px;
     pointer-events: none;
-    animation: fadeToast 2.2s ease forwards;
   }
 </style>
 </head>
@@ -395,20 +424,19 @@
   <div id="categories"></div>
 
   <footer>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="reset-btn" onclick="resetAll()">&#8635; Reset Day</button>
       <button class="reset-btn" onclick="clearAll()" style="font-size:9px">&#10005; Clear All</button>
+      <button class="action-btn" onclick="carryOverToNextDay()" title="Copy unfinished tasks to the next day">&#8594; Carry Over Unfinished</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <span class="summary-text" id="footerSummary"></span>
-      <button class="copy-btn" onclick="copyAsText()" title="Copy to paste into LabArchives rich text">
-        &#128203; Copy for Notebook
-      </button>
+      <button class="copy-btn" onclick="copyAsText()">&#128203; Copy for Notebook</button>
     </div>
   </footer>
 </div>
 
-<div id="copyToast">Copied to clipboard!</div>
+<div id="copyToast"></div>
 
 <script>
 const CATEGORIES = [
@@ -458,6 +486,70 @@ function shiftDate(delta) {
   render();
 }
 
+function getNextDate(date) {
+  const d = new Date(date + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  // Skip Saturday (6) and Sunday (0) — jump to Monday
+  if (d.getDay() === 6) d.setDate(d.getDate() + 2); // Sat -> Mon
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
+  return d.toISOString().slice(0, 10);
+}
+
+function carryOverToNextDay() {
+  // Collect all unchecked tasks from current day
+  let anyUnchecked = false;
+  CATEGORIES.forEach(cat => {
+    if (state[cat.id].some(t => !t.done)) anyUnchecked = true;
+  });
+
+  if (!anyUnchecked) {
+    showToast('No unfinished tasks to carry over!', 2200);
+    return;
+  }
+
+  const nextDate = getNextDate(currentDate);
+  const nextDateLabel = new Date(nextDate + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric'
+  });
+
+  if (!confirm('Copy all unfinished tasks to ' + nextDateLabel + '?')) return;
+
+  // Load next day's state
+  let nextState = {};
+  try {
+    const saved = localStorage.getItem(storageKey(nextDate));
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      CATEGORIES.forEach(cat => { nextState[cat.id] = parsed[cat.id] || []; });
+    } else {
+      CATEGORIES.forEach(cat => { nextState[cat.id] = []; });
+    }
+  } catch(e) {
+    CATEGORIES.forEach(cat => { nextState[cat.id] = []; });
+  }
+
+  // Prepend unchecked tasks to next day (mark as carried over, reset to unchecked)
+  let count = 0;
+  CATEGORIES.forEach(cat => {
+    const unchecked = state[cat.id].filter(t => !t.done);
+    const carried = unchecked.map(t => ({
+      id: cat.id + '_co_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+      label: t.label,
+      done: false,
+      carriedOver: true
+    }));
+    nextState[cat.id] = [...carried, ...nextState[cat.id]];
+    count += carried.length;
+  });
+
+  // Save next day
+  try {
+    localStorage.setItem(storageKey(nextDate), JSON.stringify(nextState));
+  } catch(e) {}
+
+  showToast(count + ' task' + (count !== 1 ? 's' : '') + ' carried to ' + nextDateLabel, 2500);
+}
+
 function render() {
   document.getElementById('datePicker').value = currentDate;
   document.getElementById('todayBadge').style.display = isToday() ? 'inline' : 'none';
@@ -494,11 +586,12 @@ function render() {
     } else {
       tasks.forEach(task => {
         const item = document.createElement('div');
-        item.className = 'task-item' + (task.done ? ' done' : '');
+        item.className = 'task-item' + (task.done ? ' done' : '') + (task.carriedOver ? ' carried' : '');
         item.innerHTML = `
           <input type="checkbox" class="task-check" ${task.done ? 'checked' : ''}
             onchange="toggleTask('${cat.id}', '${task.id}')">
           <span class="task-label" onclick="toggleTask('${cat.id}', '${task.id}')">${escapeHtml(task.label)}</span>
+          ${task.carriedOver ? '<span class="carried-tag">carried</span>' : ''}
           <button class="task-del" onclick="deleteTask('${cat.id}', '${task.id}')" title="Remove">&#215;</button>
         `;
         list.appendChild(item);
@@ -574,57 +667,51 @@ function clearAll() {
 }
 
 function copyAsText() {
-  // Format: header + each category with its tasks
   const dateLabel = new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  let lines = [];
-  lines.push('Lab Checklist — ' + dateLabel);
-  lines.push('');
-
+  let lines = ['Lab Checklist — ' + dateLabel, ''];
   let hasAnyTask = false;
+
   CATEGORIES.forEach(cat => {
     const tasks = state[cat.id];
     if (tasks.length === 0) return;
     hasAnyTask = true;
     lines.push('[' + cat.label.toUpperCase() + ']');
     tasks.forEach(task => {
-      lines.push((task.done ? '\u2713 ' : '\u2610 ') + task.label);
+      const carried = task.carriedOver ? ' (carried over)' : '';
+      lines.push((task.done ? '\u2713 ' : '\u2610 ') + task.label + carried);
     });
     lines.push('');
   });
 
-  if (!hasAnyTask) {
-    lines.push('(No tasks recorded for this day)');
-  }
+  if (!hasAnyTask) lines.push('(No tasks recorded for this day)');
 
   const text = lines.join('\n').trimEnd();
 
   navigator.clipboard.writeText(text).then(() => {
-    showToast();
+    showToast('Copied to clipboard!', 2200);
   }).catch(() => {
-    // Fallback for older browsers / iframe restrictions
     const ta = document.createElement('textarea');
     ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
+    ta.style.cssText = 'position:fixed;opacity:0;';
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast();
+    showToast('Copied to clipboard!', 2200);
   });
 }
 
-function showToast() {
+function showToast(message, duration) {
   const toast = document.getElementById('copyToast');
+  toast.textContent = message;
   toast.style.display = 'block';
-  // Re-trigger animation
   toast.style.animation = 'none';
-  toast.offsetHeight; // reflow
-  toast.style.animation = 'fadeToast 2.2s ease forwards';
-  setTimeout(() => { toast.style.display = 'none'; }, 2300);
+  toast.offsetHeight;
+  toast.style.animation = 'fadeToast ' + (duration / 1000) + 's ease forwards';
+  setTimeout(() => { toast.style.display = 'none'; }, duration + 100);
 }
 
 function escapeHtml(str) {
