@@ -257,8 +257,8 @@
     transition: color 0.15s;
     flex-shrink: 0;
   }
-  .task-comment-btn:hover { color: var(--accent-data); }
-  .task-comment-btn.has-comment { color: var(--accent-data); }
+  .task-comment-btn:hover { color: #888; }
+  .task-comment-btn.has-comment { color: var(--accent-protocol); }
 
   .task-comment-box {
     display: none;
@@ -650,7 +650,7 @@ function render() {
 
         // Comment box below the task row
         const commentBox = document.createElement('div');
-        commentBox.className = 'task-comment-box' + (hasComment ? ' visible' : '');
+        commentBox.className = 'task-comment-box';  // always hidden until toggled
         commentBox.id = 'comment_' + task.id;
         commentBox.innerHTML = `
           <textarea class="task-comment-textarea"
