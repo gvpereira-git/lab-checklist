@@ -246,6 +246,55 @@
   }
   .task-del:hover { color: #c0392b; }
 
+  .task-comment-btn {
+    background: none;
+    border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .task-comment-btn:hover { color: var(--accent-data); }
+  .task-comment-btn.has-comment { color: var(--accent-data); }
+
+  .task-comment-box {
+    display: none;
+    margin-top: 4px;
+    margin-left: 26px;
+    animation: slideIn 0.15s ease;
+  }
+  .task-comment-box.visible { display: block; }
+
+  .task-comment-textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface);
+    resize: vertical;
+    min-height: 54px;
+    outline: none;
+    line-height: 1.4;
+    transition: border-color 0.15s;
+  }
+  .task-comment-textarea:focus { border-color: var(--accent-data); }
+  .task-comment-textarea::placeholder { color: var(--border); font-style: italic; }
+
+  .task-comment-saved {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+    padding: 0 2px;
+  }
+
   .add-task-row { display: none; gap: 6px; margin-top: 4px; animation: slideIn 0.15s ease; }
   .add-task-row.visible { display: flex; }
 
@@ -587,14 +636,33 @@ function render() {
       tasks.forEach(task => {
         const item = document.createElement('div');
         item.className = 'task-item' + (task.done ? ' done' : '') + (task.carriedOver ? ' carried' : '');
+        const hasComment = task.comment && task.comment.trim().length > 0;
         item.innerHTML = `
           <input type="checkbox" class="task-check" ${task.done ? 'checked' : ''}
             onchange="toggleTask('${cat.id}', '${task.id}')">
           <span class="task-label" onclick="toggleTask('${cat.id}', '${task.id}')">${escapeHtml(task.label)}</span>
           ${task.carriedOver ? '<span class="carried-tag">carried</span>' : ''}
+          <button class="task-comment-btn ${hasComment ? 'has-comment' : ''}"
+            onclick="toggleComment('${cat.id}', '${task.id}')"
+            title="${hasComment ? 'View/edit comment' : 'Add comment'}">&#128172;</button>
           <button class="task-del" onclick="deleteTask('${cat.id}', '${task.id}')" title="Remove">&#215;</button>
         `;
+
+        // Comment box below the task row
+        const commentBox = document.createElement('div');
+        commentBox.className = 'task-comment-box' + (hasComment ? ' visible' : '');
+        commentBox.id = 'comment_' + task.id;
+        commentBox.innerHTML = `
+          <textarea class="task-comment-textarea"
+            id="commentta_${task.id}"
+            placeholder="Add a note for this task…"
+            onblur="saveComment('${cat.id}', '${task.id}')"
+            onkeydown="if(event.key==='Escape')toggleComment('${cat.id}','${task.id}')"
+          >${escapeHtml(task.comment || '')}</textarea>
+          ${hasComment ? '<div class="task-comment-saved" id="commentsaved_'+task.id+'"></div>' : '<div class="task-comment-saved" id="commentsaved_'+task.id+'"></div>'}
+        `;
         list.appendChild(item);
+        list.appendChild(commentBox);
       });
     }
     section.appendChild(list);
@@ -682,6 +750,9 @@ function copyAsText() {
     tasks.forEach(task => {
       const carried = task.carriedOver ? ' (carried over)' : '';
       lines.push((task.done ? '\u2713 ' : '\u2610 ') + task.label + carried);
+      if (task.comment && task.comment.trim()) {
+        lines.push('   → ' + task.comment.trim());
+      }
     });
     lines.push('');
   });
@@ -712,6 +783,39 @@ function showToast(message, duration) {
   toast.offsetHeight;
   toast.style.animation = 'fadeToast ' + (duration / 1000) + 's ease forwards';
   setTimeout(() => { toast.style.display = 'none'; }, duration + 100);
+}
+
+function toggleComment(catId, taskId) {
+  const box = document.getElementById('comment_' + taskId);
+  if (!box) return;
+  const isVisible = box.classList.contains('visible');
+  box.classList.toggle('visible');
+  if (!isVisible) {
+    setTimeout(() => {
+      const ta = document.getElementById('commentta_' + taskId);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 50);
+  }
+}
+
+function saveComment(catId, taskId) {
+  const ta = document.getElementById('commentta_' + taskId);
+  if (!ta) return;
+  const task = state[catId].find(t => t.id === taskId);
+  if (!task) return;
+  task.comment = ta.value;
+  saveState();
+  // Update comment button appearance
+  const btn = ta.closest('.task-list').querySelector(`button.task-comment-btn[onclick*="${taskId}"]`);
+  if (btn) {
+    if (task.comment.trim()) btn.classList.add('has-comment');
+    else btn.classList.remove('has-comment');
+  }
+  const saved = document.getElementById('commentsaved_' + taskId);
+  if (saved) {
+    saved.textContent = 'Saved';
+    setTimeout(() => { if(saved) saved.textContent = ''; }, 1500);
+  }
 }
 
 function escapeHtml(str) {
